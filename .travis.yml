@@ -1,6 +1,10 @@
 dist: trusty
 sudo: false
-install:
-  ./install/shellcheck
+addons:
+  apt:
+    sources:
+      - debian-sid
+    packages:
+      - shellcheck
 script:
   - make travis
