@@ -1,1 +1,1 @@
-shellcheck -s bash "${1}"
+shellcheck -x -s bash "${1}"

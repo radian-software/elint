@@ -3,8 +3,6 @@
 # https://github.com/koalaman/shellcheck/issues/667
 # shellcheck disable=SC2103
 
-# shellcheck source=/dev/null
-
 set -e
 set -o pipefail
 shopt -s nullglob
@@ -56,6 +54,7 @@ for task in "${tasks[@]}"; do
         fi
     }
 
+    # shellcheck source=/dev/null
     IFS= source $ELINT_CHECKERS_DIR/dispatch
 
     if [[ $checker == elint_invalid_task ]]; then

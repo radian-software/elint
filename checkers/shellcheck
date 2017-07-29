@@ -1,1 +1,1 @@
-shellcheck "${1}"
+shellcheck -x "${1}"

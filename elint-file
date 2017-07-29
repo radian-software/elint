@@ -3,8 +3,6 @@
 # https://github.com/koalaman/shellcheck/issues/667
 # shellcheck disable=SC2103
 
-# shellcheck source=/dev/null
-
 set -e
 set -o pipefail
 elint="$(cd "$(dirname "$0")" && pwd)"
@@ -35,14 +33,18 @@ fi
 
 if [[ -f $ELINT_CHECKERS_DIR/$checker ]]; then
     if [[ -n $file ]]; then
+        # shellcheck source=/dev/null
         source "$ELINT_CHECKERS_DIR/$checker" "$file" 2>&1 || true
     else
+        # shellcheck source=/dev/null
         source "$ELINT_CHECKERS_DIR/$checker" 2>&1 || true
     fi
 else
     if [[ -n $file ]]; then
+        # shellcheck source=/dev/null
         source "$elint/checkers/$checker" "$file" 2>&1 || true
     else
+        # shellcheck source=/dev/null
         source "$elint/checkers/$checker" 2>&1 || true
     fi
 fi
