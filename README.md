@@ -82,3 +82,6 @@ is an example `Makefile`:
     .PHONY: toc
     toc:
         @./elint toc
+
+To install required dependencies on Travis, you can use the scripts in
+the `install` directory of this repository in your `.travis.yml`.

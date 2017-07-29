@@ -1,11 +1,6 @@
 dist: trusty
 sudo: false
 install:
-  # longlines-start
-  - wget https://storage.googleapis.com/shellcheck/shellcheck-latest.linux.x86_64.tar.xz
-      -O /tmp/shellcheck-latest.tar.xz
-  # longlines-stop
-  - tar -x -C /tmp -f /tmp/shellcheck-latest.tar.xz
-  - export PATH="/tmp/shellcheck-latest:$PATH"
+  ./install/shellcheck
 script:
   - make travis
