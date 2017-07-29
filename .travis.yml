@@ -6,5 +6,7 @@ addons:
       - debian-sid
     packages:
       - shellcheck
+before_script:
+  - shellcheck --version
 script:
   - make travis
