@@ -8,6 +8,7 @@
 set -e
 set -o pipefail
 shopt -s nullglob
+shopt -s dotglob
 elint="$(cd "$(dirname "$0")" && pwd)"
 
 tasks=("$@")
