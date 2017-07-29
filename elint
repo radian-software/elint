@@ -64,6 +64,7 @@ for task in "${tasks[@]}"; do
     fi
 
     for file in "${files[@]}"; do
+        # shellcheck disable=SC2206
         IFS= expanded_files=($file)
 
         if [[ ${#expanded_files[@]} -eq 0 ]]; then
