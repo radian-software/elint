@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+
+# https://github.com/koalaman/shellcheck/issues/667
+# shellcheck disable=SC2103
+
+# shellcheck source=/dev/null
+
+set -e
+set -o pipefail
+shopt -s nullglob
+elint="$(cd "$(dirname "$0")" && pwd)"
+
+tasks=("$@")
+
+if (( $# == 0 )); then
+    echo "usage: elint <task>..." 1>&2
+    exit 1
+fi
+
+ELINT_CHECKERS_DIR=checkers
+
+if [[ -f .elintrc ]]; then
+    source .elintrc
+fi
+export ELINT_CHECKERS_DIR
+
+if [[ ! -f $ELINT_CHECKERS_DIR/dispatch ]]; then
+    if [[ -L $ELINT_CHECKERS_DIR/dispatch ]]; then
+        echo "Broken symlink: $ELINT_CHECKERS_DIR/dispatch" 1>&2
+    else
+        echo "File not found: $ELINT_CHECKERS_DIR/dispatch" 1>&2
+    fi
+    exit 1
+fi
+
+fail=
+
+for task in "${tasks[@]}"; do
+    checker=elint_invalid_task
+    files=()
+
+    task() {
+        if [[ $task == "$1" ]]; then
+            checker=$1
+            shift
+            files=("$@")
+        fi
+    }
+
+    custom_task() {
+        if [[ $task == "$1" ]]; then
+            checker=$2
+            shift 2
+            files=("$@")
+        fi
+    }
+
+    IFS= source $ELINT_CHECKERS_DIR/dispatch
+
+    if [[ $checker == elint_invalid_task ]]; then
+        echo "Task not found: $task" 1>&2
+        exit 1
+    fi
+
+    for file in "${files[@]}"; do
+        IFS= expanded_files=($file)
+
+        if [[ ${#expanded_files[@]} -eq 0 ]]; then
+            echo "No matches: $file" 1>&2
+            exit 1
+        fi
+
+        output=$("$elint/elint-file" "$checker" "$file")
+
+        if [[ -n $output ]]; then
+            if [[ $task == "$checker" ]]; then
+                echo "==> elint: $task: $file"
+            else
+                echo "==> elint: $task: $checker: $file"
+            fi
+            echo "$output"
+            fail=yes
+        fi
+    done
+done
+
+if [[ -n $fail ]]; then
+    exit 1
+fi

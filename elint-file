@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+# https://github.com/koalaman/shellcheck/issues/667
+# shellcheck disable=SC2103
+
+# shellcheck source=/dev/null
+
+set -e
+set -o pipefail
+elint="$(cd "$(dirname "$0")" && pwd)"
+
+checker=$1
+file=$2
+
+if [[ -z $checker ]]; then
+    echo "usage: elint-file <checker> [<file>]" 1>&2
+    exit 1
+fi
+
+if [[ ! -f $elint/checkers/$checker &&
+          ! -f $ELINT_CHECKERS_DIR/$checker ]]; then
+    if [[ -L $elint/checkers/$checker ||
+              -L $ELINT_CHECKERS_DIR/$checker ]]; then
+        echo "Checker found but symlink broken: $checker" 1>&2
+    else
+        echo "Checker not built-in or user-defined: $checker" 1>&2
+    fi
+    exit 1
+fi
+
+if [[ -n $file && ! -f $file ]]; then
+    echo "File does not exist: $PWD/$file" 1>&2
+    exit 1
+fi
+
+if [[ -f $ELINT_CHECKERS_DIR/$checker ]]; then
+    if [[ -n $file ]]; then
+        source "$ELINT_CHECKERS_DIR/$checker" "$file" 2>&1 || true
+    else
+        source "$ELINT_CHECKERS_DIR/$checker" 2>&1 || true
+    fi
+else
+    if [[ -n $file ]]; then
+        source "$elint/checkers/$checker" "$file" 2>&1 || true
+    else
+        source "$elint/checkers/$checker" 2>&1 || true
+    fi
+fi

@@ -1,0 +1,5 @@
+sed '/<!-- toc -->/,/<!-- tocstop -->/d' "$1"   \
+    | sed '/longlines-start/,/longlines-stop/d' \
+    | grep -E '.{80}'                           \
+    | grep -E -v '\[.+\]: (#|http)'             \
+    | sed 's/^/long line: /'

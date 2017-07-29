@@ -1,0 +1,4 @@
+task longlines *.md checkers/* checkers-self/* elint elint-file
+task shellcheck elint elint-file
+task shellcheck-bash checkers/*
+task toc README.md

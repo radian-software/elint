@@ -1,0 +1,1 @@
+shellcheck -s bash "${1}"

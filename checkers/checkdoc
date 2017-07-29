@@ -1,0 +1,5 @@
+emacs --batch --eval                          \
+      "(progn                                 \
+         (setq sentence-end-double-space nil) \
+         (checkdoc-file \"${1}\"))"           \
+    | grep -v "^Warning (emacs):$"

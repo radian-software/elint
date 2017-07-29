@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+# If byte-compilation fails, at least we won't have a
+# stale *.elc.
+rm -f "${1}c"
+
+emacs -Q --batch --eval                      \
+      "(progn                                \
+         (setq byte-compile-error-on-warn t) \
+         (push default-directory load-path)  \
+         (batch-byte-compile))"              \
+      "${1}"                                 \
+    | grep -v '^Warning (emacs):$'
