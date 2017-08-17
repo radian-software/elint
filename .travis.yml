@@ -10,4 +10,4 @@ addons:
 before_script:
   - shellcheck --version
 script:
-  - make travis
+  - ./elint test

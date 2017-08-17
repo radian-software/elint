@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 sed '/<!-- toc -->/,/<!-- tocstop -->/d' "$1"   \
     | sed '/longlines-start/,/longlines-stop/d' \
     | grep -E '.{80}'                           \

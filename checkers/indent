@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+file=$1
+temp_file=elint-config/temp/$1
+shift
+
+extra_forms=()
+for arg; do
+    if [[ $arg == --load-file=* ]]; then
+        file_to_load=${arg#--load-file=}
+        load_form="(load \"$file_to_load\" nil 'nomessage 'nosuffix)"
+        extra_forms+=("$load_form")
+    elif [[ $arg == --require=* ]]; then
+        feature=${arg#--require=}
+        require_form="(require '$feature)"
+        extra_forms+=("$require_form")
+    else
+        echo "Invalid argument: $arg" 1>&2
+        return 1
+    fi
+done
+
+# Just so that we don't accidentally diff a stale file.
+rm -f "$temp_file"
+
+# Note that this will break on filenames with quotes or other
+# Emacs-specific escape sequences in them.
+emacs -Q --batch --eval "$(cat <<EOF
+(with-temp-file "$temp_file"
+  (make-directory
+   (file-name-directory "$temp_file")
+   'parents)
+  (load "$ELINT/resources/fix-indent.el" nil 'nomessage 'nosuffix)
+  (let ((default-directory "$PWD"))
+    (insert-file-contents-literally "$file")
+    ${extra_forms[*]})
+  (emacs-lisp-mode)
+  (indent-region (point-min) (point-max)))
+EOF
+)" 2>&1 | grep -Ev '^Indenting region...(done)?'
+
+if [[ ! -f $temp_file ]]; then
+    echo "Emacs failed to create $temp_file!"
+fi
+
+# Was the indentation wrong? If so, we'll have some changes.
+git diff --no-index "$file" "$temp_file"

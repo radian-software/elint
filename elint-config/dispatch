@@ -2,3 +2,6 @@ task longlines *.md *.yml checkers/* checkers-self/* elint elint-file
 task shellcheck elint elint-file
 task shellcheck-bash checkers/*
 task toc README.md
+
+group test shellcheck shellcheck-bash longlines
+group all test toc

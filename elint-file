@@ -2,49 +2,60 @@
 
 # https://github.com/koalaman/shellcheck/issues/667
 # shellcheck disable=SC2103
+# shellcheck source=/dev/null
 
+# Set options.
 set -e
 set -o pipefail
-elint="$(cd "$(dirname "$0")" && pwd)"
 
+# Parse command-line arguments.
 checker=$1
 file=$2
+shift 2
+args=("$@")
 
+# Determine the directory containing the elint source code.
+elint="$(cd "$(dirname "$0")" && pwd)"
+
+# Abort if not enough arguments given.
 if [[ -z $checker ]]; then
     echo "usage: elint-file <checker> [<file>]" 1>&2
     exit 1
 fi
 
-if [[ ! -f $elint/checkers/$checker &&
-          ! -f $ELINT_CHECKERS_DIR/$checker ]]; then
-    if [[ -L $elint/checkers/$checker ||
-              -L $ELINT_CHECKERS_DIR/$checker ]]; then
-        echo "Checker found but symlink broken: $checker" 1>&2
+# Compute the path to the checker, presuming that it's user-provided.
+script=$PWD/elint-config/$checker
+
+# If the checker is user-provided, run it.
+if [[ -f $script ]]; then
+    if [[ -n $file ]]; then
+        ELINT=$elint source "$script" "$file" "${args[@]}" || true
     else
-        echo "Checker not built-in or user-defined: $checker" 1>&2
+        ELINT=$elint source "$script" "${args[@]}" || true
     fi
-    exit 1
+    exit 0
 fi
 
-if [[ -n $file && ! -f $file ]]; then
-    echo "File does not exist: $PWD/$file" 1>&2
-    exit 1
+# Otherwise, see if the checker is built in, and run it if so.
+if [[ -f $elint/checkers/$checker ]]; then
+    if [[ -n $file ]]; then
+        ELINT=$elint source "$elint/checkers/$checker" \
+             "$file" "${args[@]}" || true
+    else
+        ELINT=$elint source "$elint/checkers/$checker" \
+             "${args[@]}" || true
+    fi
+    exit 0
 fi
 
-if [[ -f $ELINT_CHECKERS_DIR/$checker ]]; then
-    if [[ -n $file ]]; then
-        # shellcheck source=/dev/null
-        source "$ELINT_CHECKERS_DIR/$checker" "$file" 2>&1 || true
+# Else, print a helpful error message.
+if [[ ! -f $script ]]; then
+    if [[ -d $script ]]; then
+        echo "elint: $script: Is a directory" 1>&2
+    elif [[ -L $script ]]; then
+        echo "elint: $script: Broken symlink" 1>&2
     else
-        # shellcheck source=/dev/null
-        source "$ELINT_CHECKERS_DIR/$checker" 2>&1 || true
+        echo "elint: $script: No such file or directory" 1>&2
     fi
-else
-    if [[ -n $file ]]; then
-        # shellcheck source=/dev/null
-        source "$elint/checkers/$checker" "$file" 2>&1 || true
-    else
-        # shellcheck source=/dev/null
-        source "$elint/checkers/$checker" 2>&1 || true
-    fi
+    exit 1
 fi

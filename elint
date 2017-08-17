@@ -2,99 +2,193 @@
 
 # https://github.com/koalaman/shellcheck/issues/667
 # shellcheck disable=SC2103
+# shellcheck source=/dev/null
 
+# Set options.
 set -e
 set -o pipefail
 shopt -s nullglob
 shopt -s dotglob
-elint="$(cd "$(dirname "$0")" && pwd)"
 
+# Parse command-line arguments.
 tasks=("$@")
 
+# Abort if no tasks given.
 if (( $# == 0 )); then
     echo "usage: elint <task>..." 1>&2
     exit 1
 fi
 
-ELINT_CHECKERS_DIR=checkers
+# Determine the directory containing the elint source code.
+elint="$(cd "$(dirname "$0")" && pwd)"
 
-if [[ -f .elintrc ]]; then
-    source .elintrc
-fi
+# Locate the dispatch file.
+dispatch=$PWD/elint-config/dispatch
 
-if [[ ! -d $ELINT_CHECKERS_DIR ]]; then
-    if [[ $ELINT_CHECKERS_DIR == /* ]]; then
-        echo "Directory does not exist: $ELINT_CHECKERS_DIR" 1>&2
+# Abort if the dispatch file does not exist.
+if [[ ! -f $dispatch ]]; then
+    if [[ -d $dispatch ]]; then
+        echo "elint: $dispatch: Is a directory" 1>&2
+    elif [[ -L $dispatch ]]; then
+        echo "elint: $dispatch: Broken symlink" 1>&2
     else
-        echo "Directory does not exist: $PWD/$ELINT_CHECKERS_DIR" 1>&2
-    fi
-fi
-
-ELINT_CHECKERS_DIR="$(cd "$ELINT_CHECKERS_DIR" && pwd)"
-export ELINT_CHECKERS_DIR
-
-if [[ ! -f $ELINT_CHECKERS_DIR/dispatch ]]; then
-    if [[ -L $ELINT_CHECKERS_DIR/dispatch ]]; then
-        echo "Broken symlink: $ELINT_CHECKERS_DIR/dispatch" 1>&2
-    else
-        echo "File not found: $ELINT_CHECKERS_DIR/dispatch" 1>&2
+        echo "elint: $dispatch: No such file or directory" 1>&2
     fi
     exit 1
 fi
 
-fail=
-
-for task in "${tasks[@]}"; do
-    checker=elint_invalid_task
-    files=()
-
-    task() {
-        if [[ $task == "$1" ]]; then
-            checker=$1
-            shift
-            files=("$@")
+# Define functions that can be called from the dispatch file.
+task() {
+    if [[ $task == "$1" ]]; then
+        if [[ -n $found_match ]]; then
+            echo "elint: $task: Multiple definitions" 1>&2
+            exit 1
         fi
-    }
+        found_match=yes
+        checker=$1
+        shift
+        args=("$@")
+    fi
+}
 
-    custom_task() {
-        if [[ $task == "$1" ]]; then
-            checker=$2
-            shift 2
-            files=("$@")
+custom_task() {
+    if [[ $task == "$1" ]]; then
+        if [[ -n $found_match ]]; then
+            echo "elint: $task: Multiple definitions" 1>&2
+            exit 1
         fi
-    }
+        found_match=yes
+        checker=$2
+        shift 2
+        args=("$@")
+    fi
+}
 
-    # shellcheck source=/dev/null
-    IFS= source $ELINT_CHECKERS_DIR/dispatch
+group() {
+    if [[ $task == "$1" ]]; then
+        if [[ -n $found_match ]]; then
+            echo "elint: $task: Multiple definitions" 1>&2
+            exit 1
+        fi
+        found_match=yes
+        group=yes
+        shift
+        args=("$@")
+    fi
+}
 
-    if [[ $checker == elint_invalid_task ]]; then
-        echo "Task not found: $task" 1>&2
+# Define a recursive function to run a task.
+run_task() {
+
+    # This function takes one argument, the task name. It has to be
+    # assigned to $task so that the functions called from the dispatch
+    # file can use the value.
+    task=$1
+
+    # Reset variables that are set by functions that may be called in
+    # the dispatch file.
+    found_match=
+    checker=
+    group=
+    args=()
+
+    # Load the dispatch file.
+    IFS= source "$dispatch"
+
+    # If no match was found, then $found_match will not be set. Abort.
+    if [[ -z $found_match ]]; then
+        echo "elint: $task: No such task" 1>&2
         exit 1
     fi
 
-    for file in "${files[@]}"; do
-        # shellcheck disable=SC2206
-        IFS= expanded_files=($file)
+    # Check if the matched task was a task group or a regular task.
+    if [[ -n $group ]]; then
+        for subtask in "${args[@]}"; do
+            run_task "$subtask"
+        done
+    else
+        collected_args=()
+        collecting_args=yes
 
-        if [[ ${#expanded_files[@]} -eq 0 ]]; then
-            echo "No matches: $file (in $PWD)" 1>&2
-            exit 1
-        fi
+        file_specified=
 
-        output=$("$elint/elint-file" "$checker" "$file")
+        for arg in "${args[@]}"; do
+            if [[ -n $collecting_args ]]; then
+                if [[ $arg == -- ]]; then
+                    collecting_args=
+                    continue
 
-        if [[ -n $output ]]; then
-            if [[ $task == "$checker" ]]; then
-                echo "==> elint: $task: $file"
-            else
-                echo "==> elint: $task: $checker: $file"
+                elif [[ $arg == -* ]]; then
+                    collected_args+=($arg)
+                    continue
+                fi
             fi
-            echo "$output"
-            fail=yes
+
+            args_str=""
+            for collected_arg in "${collected_args[@]}"; do
+                args_str="$args_str $collected_arg"
+            done
+
+            IFS= expanded_files=($arg)
+            if [[ ${#expanded_files[@]} -eq 0 ]]; then
+                echo "elint: $arg: No matches found" 1>&2
+
+                if [[ -n $output ]]; then
+                    if [[ $task == "$checker" ]]; then
+                        echo "==> elint: $task$args_str: $file"
+                    else
+                        echo "==> elint: $task: $checker$args_str: $file"
+                    fi
+                    echo "$output"
+                    fail=yes
+                fi
+            fi
+
+            for file in "${expanded_files[@]}"; do
+                output=$("$elint/elint-file" "$checker" "$file" \
+                                             "${collected_args[@]}")
+
+                if [[ -n $output ]]; then
+                    if [[ $task == "$checker" ]]; then
+                        echo "==> elint: $task$args_str: $file"
+                    else
+                        echo "==> elint: $task: $checker$args_str: $file"
+                    fi
+                    echo "$output"
+                    fail=yes
+                fi
+            done
+
+            collected_args=()
+            collecting_args=yes
+            file_specified=yes
+        done
+
+        if [[ -z $file_specified ]]; then
+            output=$("$elint/elint-file" "$checker" "" "${collected_args[@]}")
+
+            if [[ -n $output ]]; then
+                if [[ $task == "$checker" ]]; then
+                    echo "==> elint: $task$args_str: $file"
+                else
+                    echo "==> elint: $task: $checker$args_str: $file"
+                fi
+                echo "$output"
+                fail=yes
+            fi
         fi
-    done
+    fi
+}
+
+# Initialize a variable to keep track of the final exit code.
+fail=
+
+# Run all the tasks.
+for task in "${tasks[@]}"; do
+    run_task "$task"
 done
 
+# Terminate with the appropriate exit code.
 if [[ -n $fail ]]; then
     exit 1
 fi
