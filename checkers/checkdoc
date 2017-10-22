@@ -1,5 +1,13 @@
-emacs --batch --eval                          \
-      "(progn                                 \
-         (setq sentence-end-double-space nil) \
-         (checkdoc-file \"${1}\"))"           \
+# longlines-start
+emacs --batch --eval                                                              \
+      "(progn                                                                     \
+         (when (version< emacs-version \"25.1\")                                  \
+           (defun checkdoc-file (file)                                            \
+             \"Check FILE for document, comment, error style, and rogue spaces.\" \
+             (with-current-buffer (find-file-noselect file)                       \
+               (let ((checkdoc-diagnostic-buffer \"*warn*\"))                     \
+                 (checkdoc-current-buffer t)))))                                  \
+         (setq sentence-end-double-space nil)                                     \
+         (checkdoc-file \"${1}\"))"                                               \
     | grep -v "^Warning (emacs):$"
+# longlines-stop
