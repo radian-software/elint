@@ -9,5 +9,6 @@ emacs -Q --batch --eval                      \
          (setq byte-compile-error-on-warn t) \
          (push default-directory load-path)  \
          (batch-byte-compile))"              \
-      "${1}"                                 \
-    | grep -v '^Warning (emacs):$'
+      "${1}" 2>&1                            \
+    | grep -v '^Warning (emacs):$'           \
+    | grep -v '^Wrote .*\.elc$'
