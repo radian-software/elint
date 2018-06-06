@@ -1,4 +1,11 @@
-**elint**: small module to keep my Elisp code quality tools DRY.
+## Deprecated
+
+`elint` has been deprecated. Instead of using it directly, Elisp
+projects such as [`straight.el`][straight.el], [el-patch],
+[`prescient.el`][prescient.el], and [diary-manager] maintain their own
+build tooling.
+
+The remainder of this README is included for historical value only.
 
 ## Usage
 
