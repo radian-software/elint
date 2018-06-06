@@ -5,6 +5,11 @@ projects such as [`straight.el`][straight.el], [el-patch],
 [`prescient.el`][prescient.el], and [diary-manager] maintain their own
 build tooling.
 
+[straight.el]: https://github.com/raxod502/straight.el
+[el-patch]: https://github.com/raxod502/el-patch
+[prescient.el]: https://github.com/raxod502/prescient.el
+[diary-manager]: https://github.com/raxod502/diary-manager
+
 The remainder of this README is included for historical value only.
 
 ## Usage
