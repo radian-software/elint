@@ -6,9 +6,9 @@ projects such as [`straight.el`][straight.el], [el-patch],
 build tooling.
 
 [straight.el]: https://github.com/raxod502/straight.el
-[el-patch]: https://github.com/raxod502/el-patch
-[prescient.el]: https://github.com/raxod502/prescient.el
-[diary-manager]: https://github.com/raxod502/diary-manager
+[el-patch]: https://github.com/radian-software/el-patch
+[prescient.el]: https://github.com/radian-software/prescient.el
+[diary-manager]: https://github.com/radian-software/diary-manager
 
 The remainder of this README is included for historical value only.
 
